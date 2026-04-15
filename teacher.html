@@ -1,0 +1,278 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teacher Dashboard | SUMS</title>
+    <link rel="stylesheet" href="teacher_style.css" />
+    <link rel="shortcut icon" href="logo.jpg" type="image/jpg" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+
+    <!-- QR Library -->
+    <script src="https://cdn.jsdelivr.net/npm/qrcode/build/qrcode.min.js"></script>
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="logo">
+        <img src="logo.jpg" alt="KRMU" class="logo-img" />
+        <span>K.R. Mangalam University</span>
+      </div>
+      <nav>
+        <a href="#">Dashboard</a>
+        <a href="#">Profile</a>
+        <a href="#">Logout</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <aside class="sidebar">
+        <h3>Menu</h3>
+        <ul>
+          <li class="active">📊 Dashboard</li>
+          <li>🕐 Timetable</li>
+
+          <!-- Mark Attendance with sub-options -->
+          <li onclick="openAttendance()" id="attendanceMenu">
+            📷 Take Attendance
+          </li>
+
+          <li>📚 My Subjects</li>
+
+          <!-- Internal Assessment with sub-options -->
+          <li class="menu-parent" onclick="toggleSubmenu(this)">
+            📝 Internal Assessment ▾
+            <ul class="submenu">
+              <li>📋 Midterm (20 marks)</li>
+              <li>📋 Internals (30 marks)</li>
+            </ul>
+          </li>
+
+          <!-- Send Notices -->
+          <li>📢 Send Notices</li>
+          <li>📆 Academic Calendar</li>
+          <li>📨 Grievances / Complaints</li>
+        </ul>
+      </aside>
+
+      <main class="content">
+        <h1>Welcome, Professor 👋</h1>
+        <p class="subtitle">Here's your teaching overview for today</p>
+
+        <div class="cards">
+          <div class="card">
+            <h2>📚 Total Subjects</h2>
+            <p class="big">4</p>
+            <span>Assigned this semester</span>
+          </div>
+
+          <div class="card">
+            <h2>👨‍🎓 Total Students</h2>
+            <p class="big">180</p>
+            <span>Across all classes</span>
+          </div>
+
+          <div class="card">
+            <h2>🕐 Classes Today</h2>
+            <p class="big">3</p>
+            <span>Scheduled lectures</span>
+          </div>
+
+          <div class="card">
+            <h2>📨 Pending Grievances</h2>
+            <p class="big orange">2</p>
+            <span>Need your response</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📅 Today's Classes</h2>
+          <ul id="timetableList">
+            <li>Loading timetable...</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>⚡ Quick Actions</h2>
+          <div class="actions">
+            <button>📝 Upload Marks</button>
+            <button>📢 Create Notice</button>
+            <button>📋 Internal Assessment</button>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📚 My Subjects</h2>
+          <ul id="subjectsList">
+            <li>Loading subjects...</li>
+          </ul>
+        </div>
+        <div class="section" id="attendanceSection" style="display: none">
+          <h2>📷 Live Attendance</h2>
+
+          <!-- QR -->
+          <canvas id="qrCanvas"></canvas>
+
+          <h3 style="margin-top: 20px">Student List</h3>
+
+          <div id="studentList">
+            <!-- dynamically filled -->
+          </div>
+
+          <button onclick="submitAttendance()" style="margin-top: 15px">
+            ✅ Submit Attendance
+          </button>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      async function loadRealStudents() {
+        const container = document.getElementById("studentList");
+        container.innerHTML = "Loading students...";
+
+        const { data, error } = await client
+          .from("profiles")
+          .select("id, full_name")
+          .eq("role", "student");
+
+        if (error) {
+          container.innerHTML = "Error loading students";
+          console.error(error);
+          return;
+        }
+
+        container.innerHTML = "";
+
+        data.forEach((s) => {
+          container.innerHTML += `
+      <div style="margin:5px 0;">
+        <input type="checkbox" id="student-${s.id}">
+        ${s.full_name}
+      </div>
+    `;
+        });
+      }
+      async function openAttendance() {
+        document.getElementById("attendanceSection").style.display = "block";
+
+        await loadRealStudents(); // ✅ CORRECT
+        startQR();
+      }
+
+      let currentSessionId = null;
+
+      let qrInterval = null;
+
+      function startQR() {
+        if (qrInterval) return; // prevent multiple intervals
+
+        qrInterval = setInterval(generateQR, 2000);
+      }
+
+      async function generateQR() {
+        console.log("🔁 Generating QR...");
+
+        const token = Math.random().toString(36).substring(2, 8);
+        const expiresAt = new Date(Date.now() + 4000);
+
+        const { data, error } = await client
+          .from("attendance_sessions")
+          .insert([
+            {
+              otp_token: token,
+              expires_at: expiresAt,
+              is_active: true,
+            },
+          ])
+          .select()
+          .single();
+
+        if (error) {
+          console.error("❌ DB Error:", error);
+          return;
+        }
+
+        console.log("✅ Session created:", data);
+
+        currentSessionId = data.id;
+
+        const qrURL = `${window.location.origin}/scan.html?token=${token}`;
+
+        console.log("🔗 QR URL:", qrURL);
+
+        const canvas = document.getElementById("qrCanvas");
+
+        if (!canvas) {
+          console.error("❌ Canvas not found!");
+          return;
+        }
+
+        QRCode.toCanvas(canvas, qrURL, function (err) {
+          if (err) {
+            console.error("❌ QR Error:", err);
+          } else {
+            console.log("✅ QR rendered");
+          }
+        });
+      }
+
+      setInterval(checkAttendanceUpdates, 1000);
+
+      async function checkAttendanceUpdates() {
+        const { data, error } = await client
+          .from("attendance")
+          .select("student_id")
+          .eq("session_id", currentSessionId);
+
+        if (error) return;
+
+        data.forEach((a) => {
+          const checkbox = document.getElementById(`student-${a.student_id}`);
+          if (checkbox) checkbox.checked = true;
+        });
+      }
+
+      function submitAttendance() {
+        alert("Attendance submitted successfully!");
+      }
+
+      async function loadTimetable() {
+        const { data, error } = await client.from("timetable").select("*");
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        let html = "";
+
+        data.forEach((t) => {
+          html += `<li>${t.day_of_week} | ${t.start_time} - ${t.end_time} | Room ${t.room_number}</li>`;
+        });
+
+        document.getElementById("timetableList").innerHTML = html;
+      }
+
+      async function loadSubjects() {
+        const { data, error } = await client.from("subjects").select("name");
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        let html = "";
+
+        data.forEach((s) => {
+          html += `<li>${s.name}</li>`;
+        });
+
+        document.getElementById("subjectsList").innerHTML = html;
+      }
+
+      loadTimetable();
+      loadSubjects();
+    </script>
+  </body>
+</html>

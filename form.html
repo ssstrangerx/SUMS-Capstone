@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KRMU | Student Sign Up</title>
+    <link rel="stylesheet" href="form_style.css" />
+    <link rel="shortcut icon" href="logo.jpg" type="image/x-icon" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+  </head>
+  <body>
+    <center>
+      <h1
+        style="
+          font-family: Verdana, Geneva, Tahoma, sans-serif;
+          font-size: 45px;
+        "
+      >
+        KRMU ⬩ Student Sign Up
+      </h1>
+    </center>
+
+    <form id="studentRegForm">
+      <label for="studentName">Student's Name:</label><br />
+      <input type="text" id="studentName" required /><br /><br />
+
+      <label for="rollNumber">Roll Number:</label><br />
+      <input type="text" id="rollNumber" required /><br /><br />
+
+      <label for="email">Email ID:</label><br />
+      <input type="email" id="email" required /><br /><br />
+
+      <label for="password">Password:</label><br />
+      <input type="password" id="password" required /><br /><br />
+
+      <label for="courseName">Course Name:</label><br />
+      <input type="text" id="courseName" required /><br /><br />
+
+      <label for="year">Year:</label><br />
+      <input type="number" id="year" min="1" max="5" required /><br /><br />
+
+      <label for="semester">Semester:</label><br />
+      <input
+        type="number"
+        id="semester"
+        min="1"
+        max="10"
+        required
+      /><br /><br />
+
+      <input type="submit" value="Register Student" />
+    </form>
+    <script>
+      document
+        .getElementById("studentRegForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          console.log("🚀 Student form submitted");
+
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+          const fullName = document.getElementById("studentName").value;
+          const rollNumber = document.getElementById("rollNumber").value;
+          const courseName = document.getElementById("courseName").value;
+
+          console.log("📦 Data:", { email, fullName, rollNumber, courseName });
+
+          // STEP 1: SIGN UP
+          const { data, error } = await client.auth.signUp({
+            email,
+            password,
+          });
+
+          if (error) {
+            console.error("❌ Auth Error:", error);
+            alert(error.message);
+            return;
+          }
+
+          console.log("✅ Auth response:", data);
+
+          // 🚨 VERY IMPORTANT CHECK
+          if (!data.user || !data.user.id) {
+            alert("User not properly created in Auth");
+            console.error("User missing:", data);
+            return;
+          }
+
+          // ⏳ WAIT to avoid FK error
+          await new Promise((resolve) => setTimeout(resolve, 500));
+
+          // STEP 2: UPSERT PROFILE
+          const { error: profileError } = await client.from("profiles").upsert(
+            [
+              {
+                id: data.user.id,
+                email,
+                full_name: fullName,
+                role: "student",
+                roll_number: rollNumber,
+                course_name: courseName,
+              },
+            ],
+            {
+              onConflict: "id",
+            },
+          );
+
+          if (profileError) {
+            console.error("❌ Insert Error:", profileError);
+            alert(profileError.message);
+            return;
+          }
+
+          console.log("✅ Student profile inserted");
+          alert("Student Registered Successfully!");
+        });
+    </script>
+  </body>
+</html>

@@ -1,0 +1,358 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Student Dashboard | SUMS</title>
+    <link rel="stylesheet" href="stu_style.css" />
+    <link rel="shortcut icon" href="logo.jpg" type="image/jpg" />
+    <script src="https://unpkg.com/html5-qrcode"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+  </head>
+  <body>
+    <header class="navbar">
+      <div class="logo">
+        <img src="logo.jpg" alt="KRMU" class="logo-img" />
+        <span>K.R. Mangalam University</span>
+      </div>
+      <nav>
+        <a href="#">Dashboard</a>
+        <a href="#">Profile</a>
+        <a href="#">Logout</a>
+      </nav>
+    </header>
+
+    <div class="container">
+      <aside class="sidebar">
+        <h3>Menu</h3>
+        <ul>
+          <li class="active">📊 Dashboard</li>
+          <li>📅 Attendance</li>
+          <li>🕐 Timetable</li>
+          <li>💰 Fees</li>
+          <li>📢 Notices &amp; Announcements</li>
+          <li>📆 Academic Calendar</li>
+          <li>👨‍🏫 Mentor-Mentee</li>
+          <li>📝 Complaints / Grievance</li>
+
+          <!-- Exam Hub with sub-items -->
+          <li class="menu-parent" onclick="toggleSubmenu(this)">
+            🎓 Exam Hub ▾
+            <ul class="submenu">
+              <li>📄 Admit Card</li>
+              <li>📋 Exam Form</li>
+              <li>📊 Report Card</li>
+            </ul>
+          </li>
+        </ul>
+
+        <!-- Scan QR Button -->
+        <div class="qr-scan-btn" onclick="openScanner()">
+          <div class="qr-icon">
+            <div class="qr-corner tl"></div>
+            <div class="qr-corner tr"></div>
+            <div class="qr-corner bl"></div>
+            <div class="qr-corner br"></div>
+            <span>⬚</span>
+          </div>
+          <p>Scan QR</p>
+        </div>
+      </aside>
+
+      <main class="content">
+        <h1>Welcome, Student 👋</h1>
+        <p class="subtitle">Here's a quick overview of your academic status</p>
+
+        <div class="cards">
+          <div class="card">
+            <h2>📅 Attendance</h2>
+            <p class="big">82%</p>
+            <span>Overall attendance</span>
+          </div>
+
+          <div class="card">
+            <h2>📚 Subjects</h2>
+            <p class="big">6</p>
+            <span>Enrolled this semester</span>
+          </div>
+
+          <div class="card">
+            <h2>📢 Notices</h2>
+            <p class="big">3</p>
+            <span>Unread notices</span>
+          </div>
+
+          <div class="card">
+            <h2>💰 Fees</h2>
+            <p class="big green">Paid</p>
+            <span>Semester 4 status</span>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>📆 Upcoming Exams</h2>
+          <ul id="timetableList">
+            <li>Mathematics – 21 March</li>
+            <li>Computer Science – 25 March</li>
+            <li>Physics – 30 March</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>📢 Latest Notices</h2>
+          <ul id="noticesList">
+            <li>Mid-sem exams schedule released</li>
+            <li>Library will remain closed on Sunday</li>
+            <li>Submit assignment by Friday</li>
+          </ul>
+        </div>
+
+        <div class="section">
+          <h2>👨‍🏫 Mentor Info</h2>
+          <p>
+            <strong>Mentor:</strong> Dr. Sharma &nbsp;|&nbsp;
+            <strong>Next Meeting:</strong> 25 Feb, 2:00 PM
+          </p>
+        </div>
+        <div class="section" id="scannerSection" style="display: none">
+          <h2>📷 Scan QR Code</h2>
+
+          <div id="qr-reader" style="width: 300px"></div>
+
+          <p id="scanStatus">Waiting for scan...</p>
+        </div>
+      </main>
+    </div>
+
+    <script>
+      function toggleSubmenu(el) {
+        el.classList.toggle("open");
+      }
+
+      // =======================
+      // SCANNER SYSTEM
+      // =======================
+
+      let scanner = null;
+
+      async function openScanner() {
+        document.getElementById("scannerSection").style.display = "block";
+
+        // 🔁 Reset UI
+        document.getElementById("scanStatus").innerText = "Starting camera...";
+
+        // 🔁 Stop previous scanner if running
+        if (scanner) {
+          try {
+            await scanner.stop();
+          } catch (e) {}
+        }
+
+        scanner = new Html5Qrcode("qr-reader");
+
+        try {
+          const devices = await Html5Qrcode.getCameras();
+
+          if (!devices || devices.length === 0) {
+            alert("No camera found");
+            return;
+          }
+
+          console.log("Available Cameras:", devices);
+
+          // ✅ Default camera
+          let cameraId = devices[0].id;
+
+          // 🔥 Smart rear camera detection (for phones)
+          for (let device of devices) {
+            const label = device.label.toLowerCase();
+
+            if (label.includes("back") || label.includes("rear")) {
+              cameraId = device.id;
+              break;
+            }
+          }
+
+          console.log("Using Camera:", cameraId);
+
+          document.getElementById("scanStatus").innerText = "Scanning...";
+
+          try {
+            // 🔥 Try rear camera first (for phones)
+            await scanner.start(
+              { facingMode: "environment" },
+              {
+                fps: 10,
+                qrbox: 250,
+              },
+              async (decodedText) => {
+                console.log("QR Detected:", decodedText);
+
+                document.getElementById("scanStatus").innerText =
+                  "Processing...";
+
+                await handleScan(decodedText);
+
+                await scanner.stop();
+
+                document.getElementById("scanStatus").innerText =
+                  "✅ Attendance Marked!";
+              },
+            );
+          } catch (err) {
+            console.warn("Fallback camera...");
+
+            const devices = await Html5Qrcode.getCameras();
+
+            if (!devices.length) {
+              alert("No camera found");
+              return;
+            }
+
+            await scanner.start(
+              devices[0].id,
+              {
+                fps: 10,
+                qrbox: 250,
+              },
+              async (decodedText) => {
+                console.log("QR Detected:", decodedText);
+
+                document.getElementById("scanStatus").innerText =
+                  "Processing...";
+
+                await handleScan(decodedText);
+
+                await scanner.stop();
+
+                document.getElementById("scanStatus").innerText =
+                  "✅ Attendance Marked!";
+              },
+            );
+          }
+        } catch (err) {
+          console.error("Camera error:", err);
+          alert("Camera failed to start");
+        }
+      }
+
+      // =======================
+      // HANDLE SCAN (CORE LOGIC)
+      // =======================
+
+      async function handleScan(url) {
+        try {
+          const parsed = new URL(url);
+          const token = parsed.searchParams.get("token");
+
+          if (!token) {
+            alert("Invalid QR");
+            return;
+          }
+
+          // GET SESSION
+          const { data: session, error } = await client
+            .from("attendance_sessions")
+            .select("*")
+            .eq("otp_token", token)
+            .eq("is_active", true)
+            .single();
+
+          if (error || !session) {
+            alert("Invalid or expired QR");
+            return;
+          }
+
+          // CHECK EXPIRY
+          if (new Date(session.expires_at) < new Date()) {
+            alert("QR expired");
+            return;
+          }
+
+          // GET USER
+          const { data: userData } = await client.auth.getUser();
+          const user = userData.user;
+
+          if (!user) {
+            alert("Please login first");
+            return;
+          }
+
+          // INSERT ATTENDANCE
+          const { error: insertError } = await client
+            .from("attendance")
+            .insert([
+              {
+                student_id: user.id,
+                session_id: session.id,
+                status: true,
+              },
+            ]);
+
+          if (insertError) {
+            alert("Attendance failed");
+            console.error(insertError);
+            return;
+          }
+
+          document.getElementById("scanStatus").innerText =
+            "✅ Attendance Marked!";
+          alert("Attendance Marked!");
+        } catch (err) {
+          console.error(err);
+          alert("Scan failed");
+        }
+      }
+
+      // =======================
+      // LOAD TIMETABLE
+      // =======================
+
+      async function loadTimetable() {
+        const { data, error } = await client.from("timetable").select("*");
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        let html = "";
+
+        data.forEach((t) => {
+          html += `<li>${t.day_of_week} | ${t.start_time} - ${t.end_time} | Room ${t.room_number}</li>`;
+        });
+
+        document.getElementById("timetableList").innerHTML = html;
+      }
+
+      // =======================
+      // LOAD NOTICES
+      // =======================
+
+      async function loadNotices() {
+        const { data, error } = await client.from("notices").select("*");
+
+        if (error) {
+          console.error(error);
+          return;
+        }
+
+        let html = "";
+
+        data.forEach((n) => {
+          html += `<li><b>${n.title}</b>: ${n.content}</li>`;
+        });
+
+        document.getElementById("noticesList").innerHTML = html;
+      }
+
+      // =======================
+      // INIT
+      // =======================
+
+      loadTimetable();
+      loadNotices();
+    </script>
+  </body>
+</html>

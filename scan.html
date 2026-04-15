@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Scan QR | SUMS</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
+</head>
+
+<body>
+  <h2>📷 Processing Attendance...</h2>
+
+  <script>
+    async function markAttendance() {
+      const params = new URLSearchParams(window.location.search);
+      const token = params.get("token");
+
+      console.log("Token:", token);
+
+      if (!token) {
+        alert("Invalid QR");
+        return;
+      }
+
+      // 1. Get session
+      const { data: session, error } = await client
+        .from("attendance_sessions")
+        .select("*")
+        .eq("otp_token", token)
+        .eq("is_active", true)
+        .single();
+
+      if (error || !session) {
+        alert("Invalid or expired QR");
+        console.error(error);
+        return;
+      }
+
+      // 2. Check expiry
+      if (new Date(session.expires_at) < new Date()) {
+        alert("QR expired");
+        return;
+      }
+
+      // 3. Get logged-in user
+      const { data: userData } = await client.auth.getUser();
+
+      const user = userData.user;
+
+      if (!user) {
+        alert("Please login first");
+        return;
+      }
+
+      console.log("User:", user);
+
+      // 4. Insert attendance
+      const { error: insertError } = await client
+        .from("attendance")
+        .insert([{
+          student_id: user.id,
+          session_id: session.id,
+          status: true
+        }]);
+
+      if (insertError) {
+        console.error(insertError);
+        alert("Attendance failed");
+        return;
+      }
+
+      // 5. Success
+      alert("✅ Attendance Marked!");
+
+      // 6. OPTIONAL: deactivate session (anti reuse)
+      await client
+        .from("attendance_sessions")
+        .update({ is_active: false })
+        .eq("id", session.id);
+    }
+
+    markAttendance();
+  </script>
+</body>
+</html>

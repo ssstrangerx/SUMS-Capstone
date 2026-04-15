@@ -1,0 +1,79 @@
+body{
+    background-image: url('wallpaper.png');
+    background-size: cover;
+    background-attachment: fixed;
+    margin: 0;
+    padding: 0;
+}
+
+form{
+    text-align: center;
+    font-family: Arial, sans-serif;
+    background-color: rgba(255, 255, 255, 0.8);
+    padding: 20px;
+    border-radius: 10px;
+    max-width: 500px;
+    margin: auto;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    /*  make the boxes big and capsule like*/
+}
+input[type="text"],
+input[type="email"],    
+input[type="password"],
+input[type="tel"],
+input[type="number"],
+input[type="date"],
+input[type="file"] {
+    width: 90%;
+    padding: 12px 20px;
+    margin: 8px 0;
+    display: inline-block;
+    border: 1px solid #ccc;
+    border-radius: 25px;
+    box-sizing: border-box;
+    font-size: 16px;
+}
+input[type="submit"] {
+    width: 50%;
+    background-color: #4CAF50;
+    color: white;
+    padding: 14px 20px;
+    margin: 8px 0;
+    border: none;
+    border-radius: 25px;
+    cursor: pointer;
+    font-size: 18px;
+}
+input[type="submit"]:hover {
+    background-color: #45a049;
+}
+label {
+    font-size: 18px;
+    font-weight: bold;
+}
+h1 {
+    color: #000000;
+    text-align: center;
+    margin-top: 20px;
+}
+
+button {
+    background-color: #008CBA;
+    border: none;
+    color: white;
+    padding: 10px 24px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 12px;
+}
+
+button:hover {
+    background-color: #006f98;
+    /* hover effect show be little slow and smooth*/
+    transition: background-color 0.3s ease;
+    
+}

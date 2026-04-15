@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SUMS</title>
+    <link rel="stylesheet" href="login_style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="config.js"></script>
+    <link rel="shortcutf icon" href="logo.jpg" type="image/jpg" />
+  </head>
+  <body>
+    <center>
+      <h1
+        style="
+          font-family: Verdana, Geneva, Tahoma, sans-serif;
+          font-size: 40px;
+        "
+      >
+        Smart University Management System
+      </h1>
+    </center>
+    <form id="loginForm">
+      <center>
+        <h2
+          style="
+            font-family:
+              &quot;Franklin Gothic Medium&quot;, &quot;Arial Narrow&quot;,
+              Arial, sans-serif;
+            font-size: 40px;
+          "
+        >
+          Login
+        </h2>
+      </center>
+      <label for="email">Email ID:</label><br />
+      <input type="email" id="email" name="email" required /><br /><br />
+
+      <label for="password">Password:</label><br />
+      <input
+        type="password"
+        id="password"
+        name="password"
+        required
+      /><br /><br />
+      <!-- choose whether teacher or student -->
+      <p class="role-title"><b>Login As:</b></p>
+
+      <div class="role-group">
+        <label class="role-option">
+          <input type="radio" name="role" value="student" required />Student
+        </label>
+        <label class="role-option">
+          <input type="radio" name="role" value="teacher" required />Teacher
+        </label>
+      </div>
+      <input type="submit" value="Submit" />
+      <p style="text-align: center; margin-top: 10px">Don't have an account?</p>
+
+      <div style="text-align: center">
+        <a href="form.html">Register as Student</a> |
+        <a href="teacher_form.html">Register as Teacher</a>
+      </div>
+    </form>
+
+    <script>
+      document
+        .getElementById("loginForm")
+        .addEventListener("submit", async (e) => {
+          e.preventDefault();
+
+          console.log("🔐 Login started");
+
+          const email = document.getElementById("email").value;
+          const password = document.getElementById("password").value;
+          const selectedRole = document.querySelector(
+            'input[name="role"]:checked',
+          ).value;
+
+          // STEP 1: LOGIN
+          const { data, error } = await client.auth.signInWithPassword({
+            email,
+            password,
+          });
+
+          if (error) {
+            console.error("❌ Login Error:", error);
+            alert(error.message);
+            return;
+          }
+
+          console.log("✅ Login success:", data);
+
+          if (!data.user || !data.user.id) {
+            alert("Login failed - no user returned");
+            return;
+          }
+
+          // STEP 2: FETCH PROFILE
+          const { data: profile, error: profileError } = await client
+            .from("profiles")
+            .select("*")
+            .eq("email", email)
+            .single();
+
+          if (profileError || !profile) {
+            console.error("❌ Profile Error:", profileError);
+            alert("Profile not found. Please register first.");
+            return;
+          }
+
+          console.log("🎯 Profile:", profile);
+
+          // STEP 3: ROLE VALIDATION
+          if (profile.role !== selectedRole) {
+            alert(`Access Denied: You are registered as ${profile.role}`);
+            return;
+          }
+
+          // STEP 4: REDIRECTION
+          if (profile.role === "student") {
+            window.location.href = "Students.html";
+          } else if (profile.role === "teacher") {
+            window.location.href = "teacher.html";
+          } else if (profile.role === "admin") {
+            window.location.href = "admin.html"; // optional
+          } else {
+            alert("Unknown role. Contact support.");
+          }
+        });
+    </script>
+  </body>
+</html>
